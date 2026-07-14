@@ -95,7 +95,7 @@
   }
 
   /* ---------------- transport ---------------- */
-  function play(){
+  function play(onRejected){
     audio.volume = 0;
     const attempt = audio.play();
     if (attempt && attempt.then){
@@ -104,10 +104,13 @@
         fadeTo(TARGET_VOL, FADE_MS);
         writeState({ enabled: true });
       }).catch(() => {
-        // Only reachable if play() was invoked outside a trusted
-        // gesture (e.g. a stray programmatic call) — fail quietly
-        // rather than leaving the UI in a broken-looking state.
+        // Not accepted as a trusted gesture by this browser (or a
+        // stray programmatic call) — leave the UI at rest rather than
+        // showing "playing" for audio that isn't. `onRejected`, when
+        // given, is how the auto-start listener re-arms itself for
+        // the next interaction instead of giving up for the session.
         wrap && wrap.classList.remove('playing');
+        if (typeof onRejected === 'function') onRejected();
       });
     } else {
       // Very old browsers without a Promise-returning play()
@@ -192,16 +195,35 @@
      moment play() is invoked, before the click handler even runs.
   ============================================================ */
   if (AUTO_START && (!saved || saved.enabled !== false)){
-    const GESTURE_EVENTS = ['pointerdown', 'keydown', 'touchstart'];
+    // Listed explicitly (rather than relying on click/pointerdown alone
+    // to imply the rest) so every one of these counts as the unlocking
+    // gesture, on every engine: pointerdown/touchstart fire earliest on
+    // touch, mousedown/click cover desktop and any browser that doesn't
+    // synthesize pointer events, keydown covers keyboard-only visitors.
+    const GESTURE_EVENTS = ['pointerdown', 'mousedown', 'touchstart', 'touchend', 'click', 'keydown'];
     let armed = true;
+
+    function disarm(){
+      armed = false;
+      GESTURE_EVENTS.forEach(ev => document.removeEventListener(ev, onFirstInteraction, true));
+    }
+    function rearm(){
+      // A rejected play() doesn't mean the visitor never gets music —
+      // it means *that particular* event wasn't accepted as a trusted
+      // gesture by this browser. Listen again for the next one instead
+      // of giving up for the rest of the session.
+      armed = true;
+      GESTURE_EVENTS.forEach(ev => document.addEventListener(ev, onFirstInteraction, { capture: true, passive: true }));
+    }
 
     function onFirstInteraction(e){
       if (!armed) return;
-      armed = false;
-      GESTURE_EVENTS.forEach(ev => document.removeEventListener(ev, onFirstInteraction, true));
+      disarm();
 
       const targetIsPlayButton = playBtn && e.target && e.target.closest && e.target.closest('#trackPlayBtn');
-      if (!targetIsPlayButton && audio.paused) play();
+      if (targetIsPlayButton || !audio.paused) return;
+
+      play(rearm);
     }
 
     GESTURE_EVENTS.forEach(ev => document.addEventListener(ev, onFirstInteraction, { capture: true, passive: true }));

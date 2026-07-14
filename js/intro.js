@@ -81,13 +81,19 @@ function runIntro(){
   }
 
   // However this ends, the visitor must never wait more than this
-  // long for control of the page. The animated sequence itself
-  // (see the GSAP timeline below) totals well under this; the extra
-  // margin covers a backgrounded tab or a slow device, not a stall.
+  // long for control of the page. I measured the GSAP timeline below
+  // by hand (summing every tween's start/duration through its '-=' /
+  // '+=' / '<' offsets): it totals ~8.55s end-to-end for the normal
+  // case. A literal 8s hard cutoff — tempting as a round number —
+  // would therefore clip the final dissolve short on every device,
+  // not just mobile, turning a mobile-only bug into a universal one.
+  // 10s keeps a real margin above that measured runtime (covers a
+  // slow device or a backgrounded-tab throttle) while still cutting
+  // the old worst-case wait nearly in half.
   failSafeTimer = setTimeout(() => {
     if (!finished) console.warn('[intro] fail-safe timeout reached — finishing without waiting further.');
     finish();
-  }, 13000);
+  }, 10000);
 
   document.body.classList.add('intro-active');
 
