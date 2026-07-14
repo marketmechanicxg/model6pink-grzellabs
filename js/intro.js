@@ -36,6 +36,15 @@
 'use strict';
 
 function runIntro(){
+  // Tell the page-level watchdog (see the inline <script> right after
+  // the intro markup in index.html) that this file made it this far —
+  // it's the independent backstop for the case where this line never
+  // runs at all (a stalled CDN request, a synchronous error earlier in
+  // the bundle, a script that never loads), which this file's own
+  // fail-safe timer below can't cover since that timer only starts
+  // once we're already this deep into the function.
+  window.__introStarted = true;
+
   const overlay  = document.getElementById('intro');
   const heroContent = document.querySelector('.hero-content');
 
@@ -383,10 +392,14 @@ try {
   // function body runs), make sure the visitor still isn't stuck
   // behind the intro overlay with scroll locked.
   console.warn('[intro] unrecoverable error — force-unlocking the page.', err);
-  document.body.classList.remove('intro-active');
-  const overlay = document.getElementById('intro');
-  if (overlay) overlay.remove();
-  const heroContent = document.querySelector('.hero-content');
-  if (heroContent) heroContent.classList.add('reveal');
-  try { if (typeof lenis !== 'undefined' && lenis) lenis.start(); } catch (e){}
+  if (typeof window.__rescueIntroPage === 'function'){
+    window.__rescueIntroPage();
+  } else {
+    document.body.classList.remove('intro-active');
+    const overlay = document.getElementById('intro');
+    if (overlay) overlay.remove();
+    const heroContent = document.querySelector('.hero-content');
+    if (heroContent) heroContent.classList.add('reveal');
+    try { if (typeof lenis !== 'undefined' && lenis) lenis.start(); } catch (e){}
+  }
 }

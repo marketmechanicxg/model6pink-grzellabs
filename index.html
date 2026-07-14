@@ -48,6 +48,43 @@
   <button type="button" class="intro-skip" id="introSkip" aria-label="Skip intro">Skip ✦</button>
 </div>
 
+<!-- WATCHDOG — a tiny, dependency-free safety net that runs the instant
+     the parser reaches this point, long before any CDN library or any
+     file in js/ has even started downloading. js/intro.js already has
+     its own internal fail-safe timer, but that timer only starts once
+     intro.js itself actually gets to execute — it can't protect against
+     the case this is really for: a slow/blocked CDN request, a stalled
+     network, or a synchronous error early in the local bundle preventing
+     intro.js from ever running at all. In that scenario the visitor is
+     left staring at just the background + Skip button, forever, with no
+     other script around to rescue them. This one has no dependencies at
+     all, so it always runs. It stands down the moment js/intro.js proves
+     it's alive (setting window.__introStarted), and otherwise force-
+     reveals the page after a generous grace period. -->
+<script>
+(function(){
+  var rescued = false;
+  function rescuePage(){
+    if (rescued) return;
+    rescued = true;
+    try {
+      document.body.classList.remove('intro-active');
+      var overlay = document.getElementById('intro');
+      if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      var heroContent = document.querySelector('.hero-content');
+      if (heroContent) heroContent.classList.add('reveal');
+      if (window.lenis && typeof window.lenis.start === 'function') window.lenis.start();
+    } catch (e){ /* nothing left to lose at this point — best effort only */ }
+  }
+  window.__rescueIntroPage = rescuePage;
+  setTimeout(function(){
+    // If js/intro.js never made it this far, nothing else on the page
+    // is going to save the visitor — do it here instead.
+    if (!window.__introStarted) rescuePage();
+  }, 7000);
+})();
+</script>
+
 <!-- NAV — a true 3-column CSS Grid (1fr / auto / 1fr), not a flex
      row. This is the one layout technique that makes "perfectly
      centered, on every viewport, no hacks" a mathematical guarantee
