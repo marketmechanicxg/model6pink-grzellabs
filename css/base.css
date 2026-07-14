@@ -16,6 +16,9 @@ body{
 img{ display:block; max-width:100%; }
 a{ color:inherit; text-decoration:none; }
 button{ font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+a, button, [role="button"], [role="slider"], input, select, textarea{
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
 ::selection{ background: var(--rose); color: var(--ink); }
 svg{ display:block; }
 

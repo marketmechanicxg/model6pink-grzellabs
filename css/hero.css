@@ -7,7 +7,7 @@
      exact offset that makes the content's optical center land in the
      middle of the space actually visible below the fixed nav, instead
      of the true geometric center of the full (nav-covered) viewport */
-  padding: var(--nav-h) var(--pad-x) 0; overflow:hidden;
+  padding: calc(var(--nav-h) + env(safe-area-inset-top, 0px)) var(--pad-x) 0; overflow:hidden;
   text-align:center;
 }
 .hero-content{
