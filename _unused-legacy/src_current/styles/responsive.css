@@ -64,7 +64,7 @@
   .track-wave{ width:60px; }
   .track-sub{ display:none; }
   .finale-btn{ width:100%; text-align:center; }
-  .bloom-text{ padding:0 24px; }
+  .intro-caption{ font-size:1.1rem; padding:0 24px; }
 }
 
 /* Very small phones */

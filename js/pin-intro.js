@@ -1,20 +1,30 @@
 /* ============================================================
    PIN INTRO — replaces the old canvas/GSAP intro engine entirely.
    Deliberately simple: plain DOM + CSS transitions/animations, no
-   canvas, no GSAP, no timeline library. That's the actual fix for
-   "unstable on mobile, gets stuck" — the old engine's biggest risk
-   surface was its own complexity (a hand-rolled canvas draw loop,
-   a ~15-tween GSAP timeline, a third-party smooth-scroll dependency
-   all needing to hand off to each other cleanly). This file has far
-   fewer moving parts, so there's far less that can jam.
+   canvas, no GSAP, no timeline library, and no on-screen custom
+   keypad. That's the actual fix for "unstable / won't open on
+   mobile": the old engine's biggest risk surface was its own
+   complexity (a hand-rolled canvas draw loop, a ~15-tween GSAP
+   timeline, a third-party smooth-scroll dependency all needing to
+   hand off to each other cleanly, plus a custom on-screen number
+   pad fighting the OS keyboard). This file has far fewer moving
+   parts, so there's far less that can jam — one real <input>
+   drives the OS's own numeric keyboard, which every phone already
+   knows how to show reliably.
+
+   The digit boxes themselves follow the same interaction language
+   as "Model 5"'s gate: a transparent input sits over a row of boxes
+   built dynamically from the PIN length, each lighting up with a
+   dot as a digit lands, with shake/success states on the card.
 
    Flow:
      1. #pinGate is in the markup already, visible on first paint —
         no JS needed for the PIN screen to "appear immediately".
-     2. Correct PIN → start music synchronously (same trusted
-        gesture), darken the screen, shower CSS-only flower spans,
-        show a short line of text.
-     3. Homepage fades in behind the flowers; scroll unlocks.
+     2. Correct PIN → success pulse on the card, start music
+        synchronously (same trusted gesture), darken the screen,
+        shower CSS-only flower spans, show a short line of text.
+     3. Homepage crossfades in behind the flowers (opacity + a soft
+        blur-out, not a hard cut); scroll unlocks.
      4. Flowers fade out; veil is removed; page is fully interactive.
 
    RELIABILITY CONTRACT, same spirit as the file it replaces:
@@ -35,7 +45,9 @@
   window.__pinIntroStarted = true;
 
   const gate        = document.getElementById('pinGate');
+  const card        = document.getElementById('pinCard');
   const form        = document.getElementById('pinForm');
+  const digitsWrap  = document.getElementById('pinDigits');
   const input       = document.getElementById('pinInput');
   const errorEl     = document.getElementById('pinError');
   const veil        = document.getElementById('bloomVeil');
@@ -71,37 +83,92 @@
 
   // No gate in the markup at all → nothing to gate, just make sure
   // the page is usable and stop here.
-  if (!gate || !form || !input){
+  if (!gate || !card || !form || !digitsWrap || !input){
     finish();
     return;
   }
 
-  const PIN = String((typeof CONFIG !== 'undefined' && CONFIG.pin && CONFIG.pin.code) || '0000');
+  const PIN_VALUE  = String((typeof CONFIG !== 'undefined' && CONFIG.pin && CONFIG.pin.code) || '0000');
+  const PIN_LENGTH = Math.min(8, Math.max(4, PIN_VALUE.length));
+  const reduced    = (typeof reduceMotion !== 'undefined') ? reduceMotion : window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  input.setAttribute('maxlength', String(PIN_LENGTH));
+
+  // Build digit boxes dynamically from PIN_LENGTH, same visual
+  // contract as Model 5's gate: one box per digit, each with a dot
+  // that scales in once that position is filled.
+  const boxes = [];
+  for (let i = 0; i < PIN_LENGTH; i++){
+    const box = document.createElement('span');
+    box.className = 'pin-digit';
+    const dot = document.createElement('span');
+    dot.className = 'pin-digit__dot';
+    box.appendChild(dot);
+    digitsWrap.appendChild(box);
+    boxes.push(box);
+  }
+
+  function render(){
+    const val = input.value;
+    boxes.forEach((box, idx) => {
+      box.classList.toggle('is-filled', idx < val.length);
+      box.classList.toggle('is-active', idx === val.length);
+    });
+  }
+
+  function clearError(){
+    card.classList.remove('is-error');
+    if (errorEl) errorEl.classList.remove('is-visible');
+  }
+
+  function shakeError(){
+    clearError();
+    input.value = '';
+    render();
+    void card.offsetWidth; // restart the shake animation on repeat wrong entries
+    card.classList.add('is-error');
+    if (errorEl) errorEl.classList.add('is-visible');
+
+    const onEnd = () => card.classList.remove('is-error');
+    card.addEventListener('animationend', onEnd, { once:true });
+
+    setTimeout(() => {
+      try { input.focus({ preventScroll:true }); } catch (e){ input.focus(); }
+    }, reduced ? 30 : 80);
+  }
 
   input.addEventListener('input', () => {
-    input.value = input.value.replace(/\D/g, '').slice(0, 8);
-    if (errorEl) errorEl.textContent = '';
-    gate.classList.remove('pin-shake');
+    input.value = input.value.replace(/\D/g, '').slice(0, PIN_LENGTH);
+    clearError();
+    render();
+    if (input.value.length === PIN_LENGTH) attemptUnlock();
   });
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    if (finished) return;
-
-    if (input.value.trim() !== PIN){
-      if (errorEl) errorEl.textContent = "That's not quite it — try again.";
-      gate.classList.remove('pin-shake');
-      void gate.offsetWidth; // restart the shake animation on repeat wrong entries
-      gate.classList.add('pin-shake');
-      input.value = '';
-      input.focus();
-      return;
-    }
-
-    onCorrectPin();
+    attemptUnlock();
   });
 
+  gate.addEventListener('pointerdown', (e) => {
+    if (!card.contains(e.target) || e.target === card) {
+      try { input.focus({ preventScroll:true }); } catch (err){ input.focus(); }
+    }
+  });
+
+  function attemptUnlock(){
+    if (finished) return;
+    const val = input.value.replace(/\D/g, '');
+    if (val.length !== PIN_LENGTH || val !== PIN_VALUE){
+      shakeError();
+      return;
+    }
+    onCorrectPin();
+  }
+
   function onCorrectPin(){
+    input.blur();
+    card.classList.add('is-success');
+
     // Start the soundtrack synchronously, inside this real click/
     // keydown handler — the one moment every mobile browser's
     // autoplay policy actually allows sound to begin. See the hook
@@ -112,39 +179,49 @@
 
     // However the reveal below behaves, the visitor must never wait
     // more than this long for control of the page. The scripted
-    // sequence finishes on its own at ~4.9s; this is a hard ceiling
+    // sequence finishes on its own at ~5.3s; this is a hard ceiling
     // well past that, covering a backgrounded tab or a missed event.
     failSafeTimer = setTimeout(finish, 9000);
 
-    gate.classList.add('leaving');
-    gate.addEventListener('transitionend', removeGate, { once:true });
-    setTimeout(removeGate, 900); // fallback in case transitionend never fires
-    function removeGate(){ try { if (gate.parentNode) gate.remove(); } catch (e){} }
+    // A brief success pulse plays on the card first (~500ms) before
+    // the gate itself starts leaving, so "correct PIN" reads as its
+    // own small moment rather than an instant cut to the next scene.
+    const gateLeaveDelay = reduced ? 80 : 500;
 
-    if (veil){
-      veil.classList.add('on');
-      spawnFlowers();
-    }
+    setTimeout(() => {
+      gate.classList.add('leaving');
+      const removeGate = () => { try { if (gate.parentNode) gate.remove(); } catch (e){} };
+      gate.addEventListener('transitionend', removeGate, { once:true });
+      setTimeout(removeGate, 900); // fallback in case transitionend never fires
 
-    setTimeout(() => { if (textEl) textEl.classList.add('on'); }, 350);
+      if (veil){
+        veil.classList.add('on');
+        spawnFlowers();
+      }
+    }, gateLeaveDelay);
 
-    // homepage gradually revealed behind the falling flowers
+    setTimeout(() => { if (textEl) textEl.classList.add('on'); }, gateLeaveDelay + 350);
+
+    // homepage gradually revealed behind the falling flowers — a
+    // soft blur+fade crossfade (see .hero-content in hero.css),
+    // never a hard swap, so the two scenes visibly overlap instead
+    // of one abruptly replacing the other.
     setTimeout(() => {
       if (veilDark) veilDark.classList.add('cleared');
       if (heroContent) heroContent.classList.add('reveal');
       try { if (typeof playHeroBloom === 'function') playHeroBloom(); } catch (e){ console.warn('[pin-intro] playHeroBloom failed — non-fatal.', e); }
       try { if (typeof initScrollFX === 'function') initScrollFX(); } catch (e){ console.warn('[pin-intro] initScrollFX failed — non-fatal.', e); }
       try { if (window.lenis && typeof window.lenis.start === 'function') window.lenis.start(); } catch (e){ console.warn('[pin-intro] lenis.start() failed.', e); }
-    }, 1900);
+    }, gateLeaveDelay + 1900);
 
     // flowers slowly disappear while the homepage stays fully
     // interactive underneath (it already unlocked above)
     setTimeout(() => {
       if (textEl) textEl.classList.remove('on');
       if (veil) veil.classList.add('fading');
-    }, 4000);
+    }, gateLeaveDelay + 4000);
 
-    setTimeout(finish, 4900);
+    setTimeout(finish, gateLeaveDelay + 4900);
   }
 
   function spawnFlowers(){
@@ -155,11 +232,10 @@
       : ['🌸', '🌷', '🌹', '🌺', '💐', '🪷'];
 
     // Hundreds on desktop; fewer on small/constrained screens so the
-    // shower stays smooth rather than "reliable" being sacrificed for
-    // sheer count — reliability over complex animation, per the brief.
+    // shower stays smooth — reliability over sheer count, per the brief.
     const w = window.innerWidth;
     let count = w < 640 ? 130 : (w < 1100 ? 190 : 260);
-    if (typeof reduceMotion !== 'undefined' && reduceMotion) count = Math.min(count, 40);
+    if (reduced) count = Math.min(count, 40);
 
     const frag = document.createDocumentFragment();
     for (let i = 0; i < count; i++){
@@ -169,7 +245,7 @@
       el.textContent = species[(Math.random() * species.length) | 0];
 
       const size     = 14 + Math.random() * 30;               // different sizes
-      const duration = (typeof reduceMotion !== 'undefined' && reduceMotion) ? 7 : 5 + Math.random() * 6; // different speeds
+      const duration = reduced ? 7 : 5 + Math.random() * 6;    // different speeds
       const delay    = -(Math.random() * duration);            // stagger start without extra JS timers
       const drift    = Math.round(Math.random() * 160 - 80) + 'px';
       const spin     = Math.round(Math.random() * 540 - 270) + 'deg'; // different rotations
@@ -189,8 +265,14 @@
     flowersEl.appendChild(frag);
   }
 
+  render();
+
   // focus the PIN input as soon as this file runs, so desktop
-  // visitors can start typing immediately without an extra click
-  try { input.focus({ preventScroll:true }); } catch (e){ /* non-fatal */ }
+  // visitors can start typing immediately without an extra click —
+  // a short delay on touch devices avoids fighting the page's own
+  // load-in focus/scroll behavior.
+  setTimeout(() => {
+    try { input.focus({ preventScroll:true }); } catch (e){ /* non-fatal — mobile visitors just tap the boxes */ }
+  }, reduced ? 0 : 300);
 
 })();

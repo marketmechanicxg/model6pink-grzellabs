@@ -49,7 +49,7 @@
   const FADE_MS    = cfg.fadeMs         || 1000;
   const TARGET_VOL = cfg.targetVolume   != null ? cfg.targetVolume : 0.85;
   const SAVE_MS     = cfg.saveIntervalMs || 4000;
-  const AUTO_START  = cfg.autoStart !== false && !document.getElementById('pinScreen');
+  const AUTO_START  = cfg.autoStart !== false && !document.getElementById('pinGate');
 
   let fadeRAF   = null;
   let scrubbing = false;
@@ -130,7 +130,7 @@
   });
 
   /* ---------------- direct start, for js/intro.js ----------------
-     When a PIN gate is present (#pinScreen in the markup), the global
+     When a PIN gate is present (#pinGate in the markup), the global
      first-interaction auto-start below is disabled on purpose — the
      visitor's first tap lands on the PIN pad, well before the code is
      actually accepted, and starting music on that first digit would

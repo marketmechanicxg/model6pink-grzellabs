@@ -19,13 +19,13 @@
 <link rel="stylesheet" href="./css/variables.css" />
 <link rel="stylesheet" href="./css/base.css" />
 <link rel="stylesheet" href="./css/ambient.css" />
-<link rel="stylesheet" href="./css/intro.css" />
+<link rel="stylesheet" href="./css/pin-intro.css" />
 <link rel="stylesheet" href="./css/navigation.css" />
 <link rel="stylesheet" href="./css/hero.css" />
 <link rel="stylesheet" href="./css/sections.css" />
 <link rel="stylesheet" href="./css/responsive.css" />
 </head>
-<body>
+<body class="pin-locked">
 
 <div class="garden-glow"></div>
 <canvas id="petal-bg"></canvas>
@@ -39,69 +39,62 @@
   <svg viewBox="0 0 24 24"><path d="M12 2C7 6 4 10 4 14a8 8 0 0016 0c0-4-3-8-8-12z" fill="#ff9fc0" opacity=".9"/></svg>
 </div>
 
-<!-- INTRO — a PIN gate, then a flower-fall reveal. See js/intro.js
-     and css/intro.css. The PIN itself lives in js/config.js
+<!-- PIN GATE — a real numeric input (native OS keyboard, works on every
+     phone) drives a row of decorative digit boxes, same interaction
+     language as the "Model 5" gate. See js/pin-intro.js and
+     css/pin-intro.css. The PIN itself lives in js/config.js
      (CONFIG.pin.code) — that's the one thing to change per site. -->
-<div class="intro" id="intro" role="dialog" aria-modal="true" aria-label="Enter the PIN to open this">
-  <canvas id="introCanvas" aria-hidden="true"></canvas>
-
-  <div class="intro-ambient" aria-hidden="true">
-    <span class="intro-orb intro-orb-a"></span>
-    <span class="intro-orb intro-orb-b"></span>
-    <span class="intro-orb intro-orb-c"></span>
-  </div>
-  <div class="intro-motes" id="introMotes" aria-hidden="true"></div>
-  <div class="intro-glow" id="introGlow" aria-hidden="true"></div>
-
-  <div class="pin-screen" id="pinScreen">
-    <div class="pin-card">
-      <p class="pin-eyebrow">a garden, grown quietly, blooming just for you</p>
-      <h1 class="pin-title">Enter the garden</h1>
-
-      <div class="pin-dots" id="pinDots" aria-hidden="true">
-        <span class="pin-dot"></span>
-        <span class="pin-dot"></span>
-        <span class="pin-dot"></span>
-        <span class="pin-dot"></span>
-      </div>
-      <p class="pin-error" id="pinError" role="alert">Incorrect PIN — try again</p>
-
-      <div class="pin-pad" id="pinPad">
-        <button type="button" class="pin-key" data-digit="1">1</button>
-        <button type="button" class="pin-key" data-digit="2">2</button>
-        <button type="button" class="pin-key" data-digit="3">3</button>
-        <button type="button" class="pin-key" data-digit="4">4</button>
-        <button type="button" class="pin-key" data-digit="5">5</button>
-        <button type="button" class="pin-key" data-digit="6">6</button>
-        <button type="button" class="pin-key" data-digit="7">7</button>
-        <button type="button" class="pin-key" data-digit="8">8</button>
-        <button type="button" class="pin-key" data-digit="9">9</button>
-        <span class="pin-key pin-key-spacer" aria-hidden="true"></span>
-        <button type="button" class="pin-key" data-digit="0">0</button>
-        <button type="button" class="pin-key pin-key-back" id="pinBackspace" aria-label="Delete digit">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4h11A1.5 1.5 0 0121 5.5v13a1.5 1.5 0 01-1.5 1.5h-11a1.5 1.5 0 01-1.19-.585L2 12l5.31-7.415A1.5 1.5 0 018.5 4z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M11 9.5l5 5m0-5l-5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-        </button>
-      </div>
+<div class="pin-gate" id="pinGate" role="dialog" aria-modal="true" aria-label="Enter your secret code">
+  <div class="pin-card" id="pinCard">
+    <div class="pin-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+        <path d="M12 3c2.8 0 5 2.4 5 5.4 0 2.6-1.9 4.7-4.3 5.4L12 21l-.7-7.2C9 13.1 7 11 7 8.4 7 5.4 9.2 3 12 3z"/>
+        <circle cx="12" cy="8.2" r="1.6" fill="currentColor" stroke="none"/>
+      </svg>
     </div>
-  </div>
+    <span class="eyebrow pin-eyebrow">a garden, grown quietly, blooming just for you</span>
+    <h1 class="pin-title">Enter the garden</h1>
+    <p class="pin-hint">Something has been growing just past the gate, only for you.</p>
 
-  <p class="intro-reveal-text" id="introRevealText"></p>
+    <form class="pin-form" id="pinForm" autocomplete="off" novalidate>
+      <div class="pin-digits" id="pinDigits">
+        <input type="text" inputmode="numeric" pattern="[0-9]*" id="pinInput" class="pin-hidden-input" autocomplete="one-time-code" aria-label="Secret code">
+      </div>
+      <button type="submit" class="pin-submit">
+        <span>Unlock it</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </form>
+
+    <p class="pin-error" id="pinError" role="alert" aria-live="assertive">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9L2.7 17a2 2 0 001.7 3h15.2a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      That's not quite it — try again.
+    </p>
+  </div>
+</div>
+
+<!-- BLOOM REVEAL — created hidden, switched on by js/pin-intro.js
+     only once the PIN is correct. -->
+<div class="bloom-veil" id="bloomVeil" aria-hidden="true">
+  <div class="bloom-veil-dark" id="bloomVeilDark"></div>
+  <div class="bloom-flowers" id="bloomFlowers"></div>
+  <p class="bloom-text" id="bloomText">For Someone Special…</p>
 </div>
 
 <!-- WATCHDOG — a tiny, dependency-free safety net that runs the instant
      the parser reaches this point, long before any CDN library or any
-     file in js/ has even started downloading. js/intro.js already has
-     its own internal fail-safe timer once the PIN is accepted, but
-     that timer only starts once intro.js itself actually gets to
-     execute — it can't protect against the case this is really for: a
-     slow/blocked CDN request, a stalled network, or a synchronous
-     error early in the local bundle preventing intro.js from ever
-     running at all. In that scenario the visitor is left staring at
-     just the background, forever, with no other script around to
-     rescue them. This one has no dependencies at all, so it always
-     runs. It stands down the moment js/intro.js proves it's alive
-     (setting window.__introStarted), and otherwise force-reveals the
-     page after a generous grace period. -->
+     file in js/ has even started downloading. js/pin-intro.js already
+     has its own internal fail-safe timer once the PIN is accepted,
+     but that timer only starts once pin-intro.js itself actually gets
+     to execute — it can't protect against the case this is really
+     for: a slow/blocked CDN request, a stalled network, or a
+     synchronous error early in the local bundle preventing
+     pin-intro.js from ever running at all. In that scenario the
+     visitor is left staring at just the PIN gate, forever, with no
+     other script around to rescue them. This one has no dependencies
+     at all, so it always runs. It stands down the moment
+     js/pin-intro.js proves it's alive (setting window.__pinIntroStarted),
+     and otherwise force-reveals the page after a generous grace period. -->
 <script>
 (function(){
   var rescued = false;
@@ -109,19 +102,21 @@
     if (rescued) return;
     rescued = true;
     try {
-      document.body.classList.remove('intro-active');
-      var overlay = document.getElementById('intro');
-      if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      document.body.classList.remove('pin-locked');
+      var gate = document.getElementById('pinGate');
+      if (gate && gate.parentNode) gate.parentNode.removeChild(gate);
+      var veil = document.getElementById('bloomVeil');
+      if (veil && veil.parentNode) veil.parentNode.removeChild(veil);
       var heroContent = document.querySelector('.hero-content');
       if (heroContent) heroContent.classList.add('reveal');
       if (window.lenis && typeof window.lenis.start === 'function') window.lenis.start();
     } catch (e){ /* nothing left to lose at this point — best effort only */ }
   }
-  window.__rescueIntroPage = rescuePage;
+  window.__rescuePinPage = rescuePage;
   setTimeout(function(){
-    // If js/intro.js never made it this far, nothing else on the page
-    // is going to save the visitor — do it here instead.
-    if (!window.__introStarted) rescuePage();
+    // If js/pin-intro.js never made it this far, nothing else on the
+    // page is going to save the visitor — do it here instead.
+    if (!window.__pinIntroStarted) rescuePage();
   }, 7000);
 })();
 </script>
@@ -367,6 +362,6 @@
 <script src="./js/scroll-reveal.js"></script>
 <script src="./js/music-player.js"></script>
 <script src="./js/countdown.js"></script>
-<script src="./js/intro.js"></script>
+<script src="./js/pin-intro.js"></script>
 </body>
 </html>
