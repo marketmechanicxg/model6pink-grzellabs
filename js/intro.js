@@ -305,8 +305,16 @@ function runIntro(){
         ? tierName
         : (matchMedia('(max-width:700px)').matches ? 'low' : 'medium');
       const BUDGET = Math.max(8, counts[tier] ?? 36);
-      const SIZE_MIN = FR.sizeMinPx ?? 90;
-      const SIZE_MAX = FR.sizeMaxPx ?? 230;
+      // The 90–230px range in config was tuned looking at a desktop
+      // viewport. On a ~360–430px-wide phone a 230px flower is well
+      // over half the screen width — it stops reading as "flowers
+      // falling over the page" and starts reading as oversized shapes
+      // colliding with the name underneath. Scale the whole range down
+      // by how narrow the viewport actually is, floor included so it
+      // never gets so small the effect disappears.
+      const viewportScale = clamp(innerWidth / 900, 0.42, 1);
+      const SIZE_MIN = (FR.sizeMinPx ?? 90) * viewportScale;
+      const SIZE_MAX = (FR.sizeMaxPx ?? 230) * viewportScale;
 
       // Three depth bands, painted back → front. Back flowers are
       // smaller, slower and softly blurred; front ones are the

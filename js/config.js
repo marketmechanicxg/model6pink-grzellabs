@@ -92,12 +92,17 @@ const CONFIG = {
   // scheme.
   flowerReveal: {
     text:            'For Someone Special…',
-    homeRevealDelayMs: 500,   // when the homepage backdrop starts easing into view
-    homeRevealMs:      4200,  // how long that backdrop reveal takes
+    // The backdrop now stays dark through most of the fall — flowers
+    // spend their first ~half doing the actual "cover the screen and
+    // drift" moment before the homepage starts showing through, and
+    // it's fully revealed only right at the very end, not partway
+    // through a sequence that's still mostly flowers.
+    homeRevealDelayMs: 4400,  // when the homepage backdrop starts easing into view
+    homeRevealMs:      3400,  // how long that backdrop reveal takes (finishes ~7800ms)
     captionDelayMs:    2600,  // when the caption starts fading in
     maxDurationMs:     8200,  // hard cap — the reveal always finishes by this point
-    counts:      { minimal: 12, low: 22, medium: 36, high: 52 }, // total flowers — one wave, so far fewer, far bigger
-    sizeMinPx:   90,          // "much larger" flowers, in CSS px
-    sizeMaxPx:   230,
+    counts:      { minimal: 10, low: 16, medium: 30, high: 46 }, // total flowers — one wave, so far fewer, far bigger
+    sizeMinPx:   90,          // "much larger" flowers, in CSS px — scaled down
+    sizeMaxPx:   230,         // per viewport width on small screens, see js/intro.js
   },
 };
