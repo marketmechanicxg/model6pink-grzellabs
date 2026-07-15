@@ -167,7 +167,12 @@ class Layer {
     this.resize();
   }
   resize(){
-    const dpr = Math.min(window.devicePixelRatio||1, this.conf.dpr);
+    // Cap resolution by the CURRENT device tier's dpr ceiling (not just
+    // this layer's own static config) — on a low/minimal tier that's 1x,
+    // even on a 3x-DPR phone, so three full-screen canvases don't get
+    // rendered at native resolution on hardware that can't afford it.
+    const tierDpr = (CONFIG.tiers[tierName] && CONFIG.tiers[tierName].dpr) || this.conf.dpr;
+    const dpr = Math.min(window.devicePixelRatio||1, tierDpr, this.conf.dpr);
     this.W = window.innerWidth; this.H = window.innerHeight;
     this.canvas.width  = Math.round(this.W*dpr);
     this.canvas.height = Math.round(this.H*dpr);
@@ -258,7 +263,20 @@ const engine = {
     };
     updateDensity();
     this.applyTier(tierName, true);
-    window.addEventListener('resize', () => { Object.values(this.layers).forEach(l=>l.resize()); updateDensity(); });
+
+    // Coalesce mobile browsers' repeated resize events (address-bar
+    // show/hide, on-screen keyboard opening while entering the PIN,
+    // orientation change) into a single resize per animation frame
+    // instead of reallocating three canvases on every intermediate event.
+    let resizeRAF = null;
+    window.addEventListener('resize', () => {
+      if (resizeRAF) return;
+      resizeRAF = requestAnimationFrame(() => {
+        resizeRAF = null;
+        Object.values(this.layers).forEach(l=>l.resize());
+        updateDensity();
+      });
+    });
 
     if (hoverCapable){
       window.addEventListener('mousemove', e => {
@@ -274,9 +292,18 @@ const engine = {
     const t = CONFIG.tiers[name];
     this.layers.bg.canvas.style.filter  = t.blur ? 'blur(3px)' : 'none';
     this.layers.mid.canvas.style.filter = t.blur ? 'blur(1px)' : 'none';
+    // Re-resize so each canvas's backing resolution picks up the new
+    // tier's dpr ceiling immediately (a live downgrade from sustained
+    // jank should actually shrink the pixel count, not just the count
+    // of flowers drawn onto it).
+    Object.values(this.layers).forEach(l=>l.resize());
     this.layers.bg.fill(Math.round(t.bg*this.densityScale), true);
     this.layers.mid.fill(Math.round(t.mid*this.densityScale), true);
     this.layers.fg.fill(Math.round(t.fg*this.densityScale), true);
+    // Lets CSS (see ambient.css) cut other ambient effects — the page-
+    // wide glow's blur/animation in particular — on low-end hardware,
+    // instead of only the canvas particle system responding to tier.
+    document.documentElement.classList.toggle('tier-low', name === 'minimal' || name === 'low');
   },
 
   burst(x,y,count,opts){

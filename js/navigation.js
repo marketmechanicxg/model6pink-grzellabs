@@ -44,7 +44,14 @@ function syncRevealOrigin(){
   gardenIndex.style.setProperty('--reveal-y', y + '%');
 }
 syncRevealOrigin();
-window.addEventListener('resize', syncRevealOrigin);
+// Debounced via rAF — mobile fires `resize` repeatedly during address-bar
+// show/hide and on-screen keyboard open/close; no need to re-read layout
+// and write a custom property on every one of those intermediate events.
+let revealOriginRAF = null;
+window.addEventListener('resize', () => {
+  if (revealOriginRAF) return;
+  revealOriginRAF = requestAnimationFrame(() => { revealOriginRAF = null; syncRevealOrigin(); });
+});
 bloomToggle.addEventListener('click', ()=>{
   if (toggleLocked) return; // guards against accidental double-taps mid-transition
   toggleLocked = true;

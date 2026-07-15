@@ -32,5 +32,13 @@
       prog.style.strokeDashoffset = circ * (1 - Math.min(1, v/max));
     });
   }
-  tick(); setInterval(tick, 1000);
+  // Pause the tick while the tab is hidden — a background tab has no
+  // reason to keep waking the page up once a second, and resuming
+  // simply re-syncs to the true clock the moment it's visible again.
+  let timer = setInterval(tick, 1000);
+  tick();
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden){ clearInterval(timer); }
+    else { tick(); timer = setInterval(tick, 1000); }
+  });
 })();
