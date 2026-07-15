@@ -62,14 +62,42 @@ const CONFIG = {
 
   // Background soundtrack behavior. `autoStart: true` means the track
   // begins on the visitor's very first interaction anywhere on the
-  // page (click/tap/key), which is the earliest moment every modern
-  // browser's autoplay policy actually allows sound to start — see
-  // js/music-player.js for the unlock mechanics.
+  // page (click/tap/key) — EXCEPT when a PIN gate (js/intro.js) is
+  // present in the markup, in which case music-player.js stands down
+  // and waits for the gate to explicitly start it once the correct
+  // PIN is entered, via window.__startBackgroundMusic(). See
+  // js/music-player.js for the unlock mechanics either way.
   audio: {
     autoStart: true,
     fadeMs: 1000,
     targetVolume: 0.85,
     saveIntervalMs: 4000,
     storeKey: 'nabila-garden-audio-state',
+  },
+
+  // The gate in front of the site. Change `code` to whatever 4-digit
+  // PIN you want visitors to enter — this is the one line most people
+  // editing this file actually need to touch.
+  pin: {
+    code: '1234',
+  },
+
+  // The PIN → flower-fall → homepage reveal (js/intro.js). Every
+  // duration is in milliseconds, timed from the moment the correct
+  // PIN is entered. The flowers spawn ONCE — covering nearly the
+  // whole screen immediately — then fall and drift off naturally;
+  // nothing is continuously respawned. `counts` mirrors CONFIG.tiers'
+  // naming so the flower budget per device tier lives right next to
+  // the ambient field's own tiering instead of a second, disconnected
+  // scheme.
+  flowerReveal: {
+    text:            'For Someone Special…',
+    homeRevealDelayMs: 500,   // when the homepage backdrop starts easing into view
+    homeRevealMs:      4200,  // how long that backdrop reveal takes
+    captionDelayMs:    2600,  // when the caption starts fading in
+    maxDurationMs:     8200,  // hard cap — the reveal always finishes by this point
+    counts:      { minimal: 12, low: 22, medium: 36, high: 52 }, // total flowers — one wave, so far fewer, far bigger
+    sizeMinPx:   90,          // "much larger" flowers, in CSS px
+    sizeMaxPx:   230,
   },
 };

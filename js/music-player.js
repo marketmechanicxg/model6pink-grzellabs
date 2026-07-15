@@ -49,7 +49,7 @@
   const FADE_MS    = cfg.fadeMs         || 1000;
   const TARGET_VOL = cfg.targetVolume   != null ? cfg.targetVolume : 0.85;
   const SAVE_MS     = cfg.saveIntervalMs || 4000;
-  const AUTO_START  = cfg.autoStart !== false;
+  const AUTO_START  = cfg.autoStart !== false && !document.getElementById('pinScreen');
 
   let fadeRAF   = null;
   let scrubbing = false;
@@ -128,6 +128,19 @@
   playBtn && playBtn.addEventListener('click', () => {
     if (audio.paused) play(); else pause(true);
   });
+
+  /* ---------------- direct start, for js/intro.js ----------------
+     When a PIN gate is present (#pinScreen in the markup), the global
+     first-interaction auto-start below is disabled on purpose — the
+     visitor's first tap lands on the PIN pad, well before the code is
+     actually accepted, and starting music on that first digit would
+     jump ahead of the reveal. Instead js/intro.js calls this directly,
+     synchronously, the moment the correct PIN is confirmed — which is
+     still happening inside that same trusted click/keydown handler,
+     so every browser's autoplay policy still counts it. */
+  window.__startBackgroundMusic = function(){
+    if (audio.paused) play();
+  };
 
   /* ---------------- restore saved position ---------------- */
   audio.addEventListener('loadedmetadata', () => {
